@@ -26,7 +26,7 @@ resource "aws_security_group" "alb" {
 # 2. Security Group dos frontends
 resource "aws_security_group" "frontend" {
   name        = "frontend-sg"
-  description = "Permite HTTP do ALB e SSH para configuracao"
+  description = "Permite HTTP do ALB e SSH administrativo"
   vpc_id      = aws_vpc.vpc_taotenshin.id
 
   ingress {
@@ -40,7 +40,7 @@ resource "aws_security_group" "frontend" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.ssh_allowed_cidr]
   }
 
   egress {
@@ -58,14 +58,14 @@ resource "aws_security_group" "frontend" {
 # 3. Security Group dos backends
 resource "aws_security_group" "backend" {
   name        = "backend-sg"
-  description = "Permite API dos frontends e SSH dentro da VPC"
+  description = "Permite API exclusivamente do ALB e SSH dentro da VPC"
   vpc_id      = aws_vpc.vpc_taotenshin.id
 
   ingress {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.frontend.id]
+    security_groups = [aws_security_group.alb.id]
   }
 
   ingress {

@@ -1,154 +1,101 @@
-# 1. Frontend publico na primeira Availability Zone
+# As instancias recebem imagens ja construidas pelo GitHub Actions. Terraform
+# provisiona a AWS; nao copia source, dist ou JAR para as EC2.
 resource "aws_instance" "frontend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
-  key_name                    = "vockey"
+  key_name                    = var.key_name
   subnet_id                   = aws_subnet.publica_1.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
   associate_public_ip_address = true
 
+  user_data = templatefile("${path.module}/scripts/bootstrap_frontend.sh.tftpl", {
+    frontend_image = var.frontend_image
+  })
+
   tags = {
     Name = "frontend-1"
+    Role = "frontend"
   }
 
-  connection {
-    type        = "ssh"
-    user        = "ubuntu"
-    private_key = file("./vockey.pem")
-    host        = self.public_ip
-  }
-
-  # Mesmo modelo da aula: cria as pastas antes de enviar os arquivos.
-  provisioner "remote-exec" {
-    inline = [
-      "mkdir -p /home/ubuntu/scripts"
-    ]
-  }
-
-  provisioner "file" {
-    source      = "./scripts/"
-    destination = "/home/ubuntu/scripts/"
-  }
-
-  # Instala Docker, monta o EFS e inicia o frontend.
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /home/ubuntu/scripts/*.sh",
-      "cd /home/ubuntu/scripts && bash instalacoes.sh",
-      "sudo apt-get install -y nfs-common",
-      "sudo mkdir -p /mnt/taotenshin",
-      "sudo mount -t nfs4 -o nfsvers=4.1 ${aws_efs_file_system.efs_taotenshin.id}.efs.us-east-1.amazonaws.com:/ /mnt/taotenshin",
-      "sudo docker pull nginx:stable",
-      "sudo docker rm -f taotenshin-frontend || true",
-      "sudo docker run -d --restart unless-stopped --name taotenshin-frontend -p 80:80 -v /mnt/taotenshin:/mnt/taotenshin nginx:stable"
-    ]
-  }
-
-  provisioner "file" {
-    source      = "./vockey.pem"
-  # Como no exemplo da aula, a instancia publica usa a chave para acessar
-  # as instancias privadas e iniciar o backend nelas.
-    destination = "/home/ubuntu/vockey.pem"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod 400 /home/ubuntu/vockey.pem",
-      "ssh -i /home/ubuntu/vockey.pem -o StrictHostKeyChecking=no ubuntu@${aws_instance.backend_1.private_ip} 'until command -v docker >/dev/null 2>&1; do sleep 5; done; sudo docker pull nginx:stable; sudo docker rm -f taotenshin-backend || true; sudo docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 -e DB_HOST=${aws_db_instance.taotenshin.address} -e DB_PORT=3306 -e DB_NAME=taotenshin -e DB_USERNAME=taotenshin nginx:stable'",
-      "ssh -i /home/ubuntu/vockey.pem -o StrictHostKeyChecking=no ubuntu@${aws_instance.backend_2.private_ip} 'until command -v docker >/dev/null 2>&1; do sleep 5; done; sudo docker pull nginx:stable; sudo docker rm -f taotenshin-backend || true; sudo docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 -e DB_HOST=${aws_db_instance.taotenshin.address} -e DB_PORT=3306 -e DB_NAME=taotenshin -e DB_USERNAME=taotenshin nginx:stable'"
-    ]
-  }
-
-  depends_on = [
-    aws_route_table_association.publica_1,
-    aws_efs_mount_target.az_1,
-    aws_efs_mount_target.az_2
-  ]
+  depends_on = [aws_route_table_association.publica_1]
 }
 
-# 2. Frontend publico na segunda Availability Zone
 resource "aws_instance" "frontend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
-  key_name                    = "vockey"
+  key_name                    = var.key_name
   subnet_id                   = aws_subnet.publica_2.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
   associate_public_ip_address = true
 
+  user_data = templatefile("${path.module}/scripts/bootstrap_frontend.sh.tftpl", {
+    frontend_image = var.frontend_image
+  })
+
   tags = {
     Name = "frontend-2"
+    Role = "frontend"
   }
 
-  connection {
-    type        = "ssh"
-    user        = "ubuntu"
-    private_key = file("./vockey.pem")
-    host        = self.public_ip
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "mkdir -p /home/ubuntu/scripts"
-    ]
-  }
-
-  provisioner "file" {
-    source      = "./scripts/"
-    destination = "/home/ubuntu/scripts/"
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "chmod +x /home/ubuntu/scripts/*.sh",
-      "cd /home/ubuntu/scripts && bash instalacoes.sh",
-      "sudo apt-get install -y nfs-common",
-      "sudo mkdir -p /mnt/taotenshin",
-      "sudo mount -t nfs4 -o nfsvers=4.1 ${aws_efs_file_system.efs_taotenshin.id}.efs.us-east-1.amazonaws.com:/ /mnt/taotenshin",
-      "sudo docker pull nginx:stable",
-      "sudo docker rm -f taotenshin-frontend || true",
-      "sudo docker run -d --restart unless-stopped --name taotenshin-frontend -p 80:80 -v /mnt/taotenshin:/mnt/taotenshin nginx:stable"
-    ]
-  }
-
-  depends_on = [
-    aws_route_table_association.publica_2,
-    aws_efs_mount_target.az_1,
-    aws_efs_mount_target.az_2
-  ]
+  depends_on = [aws_route_table_association.publica_2]
 }
 
-# 3. Backend privado na primeira Availability Zone
 resource "aws_instance" "backend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
-  key_name                    = "vockey"
+  key_name                    = var.key_name
   subnet_id                   = aws_subnet.backend_1.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
   associate_public_ip_address = false
 
-  user_data = file("./scripts/instalar_docker.sh")
+  user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
+    backend_image         = var.backend_image
+    database_init_sql_url = var.database_init_sql_url
+    db_host               = aws_db_instance.taotenshin.address
+    db_name               = var.db_name
+    db_password_b64       = base64encode(var.db_password)
+    db_username           = var.db_username
+    initialize_database   = true
+    jwt_secret_b64        = base64encode(var.jwt_secret)
+  })
 
   tags = {
     Name = "backend-1"
+    Role = "backend"
   }
 
-  depends_on = [aws_route_table_association.backend_1]
+  depends_on = [
+    aws_db_instance.taotenshin,
+    aws_route_table_association.backend_1,
+  ]
 }
 
-# 4. Backend privado na segunda Availability Zone
 resource "aws_instance" "backend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
-  key_name                    = "vockey"
+  key_name                    = var.key_name
   subnet_id                   = aws_subnet.backend_2.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
   associate_public_ip_address = false
 
-  user_data = file("./scripts/instalar_docker.sh")
+  user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
+    backend_image         = var.backend_image
+    database_init_sql_url = var.database_init_sql_url
+    db_host               = aws_db_instance.taotenshin.address
+    db_name               = var.db_name
+    db_password_b64       = base64encode(var.db_password)
+    db_username           = var.db_username
+    initialize_database   = false
+    jwt_secret_b64        = base64encode(var.jwt_secret)
+  })
 
   tags = {
     Name = "backend-2"
+    Role = "backend"
   }
 
-  depends_on = [aws_route_table_association.backend_2]
+  depends_on = [
+    aws_db_instance.taotenshin,
+    aws_route_table_association.backend_2,
+  ]
 }

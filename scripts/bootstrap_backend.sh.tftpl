@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+apt-get update -y
+apt-get install -y ca-certificates curl gnupg lsb-release
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes
+chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list
+apt-get update -y
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+DB_PASSWORD="$(printf '%s' '${db_password_b64}' | base64 --decode)"
+JWT_SECRET="$(printf '%s' '${jwt_secret_b64}' | base64 --decode)"
+
+%{ if initialize_database ~}
+# O RDS e criado antes desta instancia. O loop absorve o curto periodo ate ele
+# aceitar conexoes e aplica o SQL raw somente uma vez, no backend-1.
+for attempt in $(seq 1 30); do
+  if docker run --rm --network host -e MYSQL_PWD="$$DB_PASSWORD" mysql:8.0 \
+    mysqladmin ping -h '${db_host}' -u '${db_username}' --silent; then
+    curl -fsSL '${database_init_sql_url}' | docker run --rm -i --network host \
+      -e MYSQL_PWD="$$DB_PASSWORD" mysql:8.0 \
+      mysql -h '${db_host}' -u '${db_username}' '${db_name}'
+    break
+  fi
+
+  if [ "$attempt" -eq 30 ]; then
+    echo "RDS nao ficou disponivel a tempo para a inicializacao." >&2
+    exit 1
+  fi
+  sleep 10
+done
+%{ endif ~}
+
+docker pull '${backend_image}'
+docker rm -f taotenshin-backend || true
+docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 \
+  -e SERVER_PORT=8080 \
+  -e SERVER_SERVLET_CONTEXT_PATH=/api \
+  -e DB_URL='jdbc:mysql://${db_host}:3306/${db_name}' \
+  -e DB_USERNAME='${db_username}' \
+  -e DB_PASSWORD="$DB_PASSWORD" \
+  -e JWT_SECRET="$JWT_SECRET" \
+  -e JPA_DDL_AUTO=none \
+  -e SQL_INIT_MODE=never \
+  '${backend_image}'
