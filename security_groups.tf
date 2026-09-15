@@ -37,12 +37,20 @@ resource "aws_security_group" "frontend" {
   }
 
   ingress {
+    description = "SSH administrativo"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+/*
+  ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = [var.ssh_allowed_cidr]
   }
-
+*/
   egress {
     from_port   = 0
     to_port     = 0

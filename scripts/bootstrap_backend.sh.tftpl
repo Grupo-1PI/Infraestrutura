@@ -6,7 +6,7 @@ apt-get install -y ca-certificates curl gnupg lsb-release
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg --yes
 chmod a+r /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" >/etc/apt/sources.list.d/docker.list
 apt-get update -y
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
@@ -20,7 +20,7 @@ for attempt in $(seq 1 30); do
   if docker run --rm --network host -e MYSQL_PWD="$$DB_PASSWORD" mysql:8.0 \
     mysqladmin ping -h '${db_host}' -u '${db_username}' --silent; then
     curl -fsSL '${database_init_sql_url}' | docker run --rm -i --network host \
-      -e MYSQL_PWD="$$DB_PASSWORD" mysql:8.0 \
+      -e MYSQL_PWD="$DB_PASSWORD" mysql:8.0 \
       mysql -h '${db_host}' -u '${db_username}' '${db_name}'
     break
   fi
@@ -42,6 +42,9 @@ docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 \
   -e DB_USERNAME='${db_username}' \
   -e DB_PASSWORD="$DB_PASSWORD" \
   -e JWT_SECRET="$JWT_SECRET" \
+  -e SPRING_DATASOURCE_URL="jdbc:mysql://${db_host}:3306/${db_name}" \
+  -e SPRING_DATASOURCE_USERNAME="${db_username}" \
+  -e SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD" \
   -e JPA_DDL_AUTO=none \
   -e SQL_INIT_MODE=never \
   '${backend_image}'
