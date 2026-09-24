@@ -1,0 +1,15 @@
+name: Cost Estimation
+on: [push]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  c3x:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: c3xdev/c3x@v0
+        with:
+          path: .
