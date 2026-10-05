@@ -1,11 +1,19 @@
-variable "frontend_image" {
-  description = "Imagem completa do frontend publicada no Docker Hub."
+variable "frontend_repository_name" {
+  description = "Nome do repositorio ECR do frontend."
   type        = string
+  default     = "tao-tenshin-frontend"
 }
 
-variable "backend_image" {
-  description = "Imagem completa do backend publicada no Docker Hub."
+variable "backend_repository_name" {
+  description = "Nome do repositorio ECR do backend."
   type        = string
+  default     = "tao-tenshin-backend"
+}
+
+variable "image_tag" {
+  description = "Tag publicada no ECR consumida pelas instancias."
+  type        = string
+  default     = "latest"
 }
 
 variable "db_name" {

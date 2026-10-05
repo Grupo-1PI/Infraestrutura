@@ -4,12 +4,15 @@ resource "aws_instance" "frontend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
   key_name                    = var.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ecr_pull.name
   subnet_id                   = aws_subnet.publica_1.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/scripts/bootstrap_frontend.sh.tftpl", {
-    frontend_image = var.frontend_image
+    aws_region     = data.aws_region.current.name
+    ecr_registry   = local.ecr_registry
+    frontend_image = local.frontend_image
   })
 
   tags = {
@@ -24,12 +27,15 @@ resource "aws_instance" "frontend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
   key_name                    = var.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ecr_pull.name
   subnet_id                   = aws_subnet.publica_2.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/scripts/bootstrap_frontend.sh.tftpl", {
-    frontend_image = var.frontend_image
+    aws_region     = data.aws_region.current.name
+    ecr_registry   = local.ecr_registry
+    frontend_image = local.frontend_image
   })
 
   tags = {
@@ -44,12 +50,15 @@ resource "aws_instance" "backend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
   key_name                    = var.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ecr_pull.name
   subnet_id                   = aws_subnet.backend_1.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
   associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
-    backend_image         = var.backend_image
+    aws_region            = data.aws_region.current.name
+    ecr_registry          = local.ecr_registry
+    backend_image         = local.backend_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name
@@ -74,12 +83,15 @@ resource "aws_instance" "backend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
   instance_type               = "t3.micro"
   key_name                    = var.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ecr_pull.name
   subnet_id                   = aws_subnet.backend_2.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
   associate_public_ip_address = false
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
-    backend_image         = var.backend_image
+    aws_region            = data.aws_region.current.name
+    ecr_registry          = local.ecr_registry
+    backend_image         = local.backend_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name

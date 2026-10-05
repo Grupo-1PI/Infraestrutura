@@ -8,7 +8,9 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/
 chmod a+r /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" >/etc/apt/sources.list.d/docker.list
 apt-get update -y
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get install -y awscli docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+aws ecr get-login-password --region '${aws_region}' | docker login --username AWS --password-stdin '${ecr_registry}'
 
 DB_PASSWORD="$(printf '%s' '${db_password_b64}' | base64 --decode)"
 JWT_SECRET="$(printf '%s' '${jwt_secret_b64}' | base64 --decode)"
