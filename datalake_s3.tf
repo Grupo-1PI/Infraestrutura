@@ -1,29 +1,25 @@
-# 1. Bucket S3 - Bronze
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "taotenshin_bronze" {
-
-  bucket = "taotenshin-bronze-dev-local"
+  bucket = "${var.bucket_prefix}-bronze-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 
   tags = {
-    Name = "taotenshin-bronze-dev-local"
+    Layer = "raw-bronze"
   }
 }
 
-# 2. Bucket S3 - Silver
 resource "aws_s3_bucket" "taotenshin_silver" {
-
-  bucket = "taotenshin-silver-dev-local"
+  bucket = "${var.bucket_prefix}-silver-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 
   tags = {
-    Name = "taotenshin-silver-dev-local"
+    Layer = "trusted-silver"
   }
 }
 
-# 3. Bucket S3 - Gold
 resource "aws_s3_bucket" "taotenshin_gold" {
-
-  bucket = "taotenshin-gold-dev-local"
+  bucket = "${var.bucket_prefix}-gold-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 
   tags = {
-    Name = "taotenshin-gold-dev-local"
+    Layer = "gold"
   }
 }
