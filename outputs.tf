@@ -1,13 +1,9 @@
 output "bronze_bucket" {
-  value = aws_s3_bucket.taotenshin_bronze.bucket
+  value = local.bronze_bucket_name
 }
 
 output "silver_bucket" {
-  value = aws_s3_bucket.taotenshin_silver.bucket
-}
-
-output "gold_bucket" {
-  value = aws_s3_bucket.taotenshin_gold.bucket
+  value = local.silver_bucket_name
 }
 
 output "silver_lambda_name" {

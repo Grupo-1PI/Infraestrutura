@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "bucket_prefix" {
-  description = "Prefixo dos tres buckets; conta e regiao sao acrescentadas ao nome."
+  description = "Prefixo dos buckets Bronze e Silver; conta e regiao sao acrescentadas ao nome."
   type        = string
   default     = "taotenshin"
 
@@ -16,7 +16,7 @@ variable "bucket_prefix" {
 }
 
 variable "python_executable" {
-  description = "Executavel Python local que possui as dependencias de requirements.txt."
+  description = "Comando do Python instalado localmente, usado para preparar o ambiente virtual."
   type        = string
   default     = "python"
 }

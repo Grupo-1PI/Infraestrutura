@@ -1,25 +1,26 @@
 data "aws_caller_identity" "current" {}
 
-resource "aws_s3_bucket" "taotenshin_bronze" {
-  bucket = "${var.bucket_prefix}-bronze-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
-
-  tags = {
-    Layer = "raw-bronze"
-  }
+locals {
+  bronze_bucket_name = "${var.bucket_prefix}-bronze-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  silver_bucket_name = "${var.bucket_prefix}-silver-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 }
 
-resource "aws_s3_bucket" "taotenshin_silver" {
-  bucket = "${var.bucket_prefix}-silver-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+resource "aws_s3_bucket_public_access_block" "taotenshin_bronze" {
+  bucket                  = local.bronze_bucket_name
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 
-  tags = {
-    Layer = "trusted-silver"
-  }
+  depends_on = [terraform_data.prepare_buckets]
 }
 
-resource "aws_s3_bucket" "taotenshin_gold" {
-  bucket = "${var.bucket_prefix}-gold-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+resource "aws_s3_bucket_public_access_block" "taotenshin_silver" {
+  bucket                  = local.silver_bucket_name
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 
-  tags = {
-    Layer = "gold"
-  }
+  depends_on = [terraform_data.prepare_buckets]
 }

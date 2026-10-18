@@ -4,40 +4,8 @@ data "archive_file" "silver" {
   output_path = "${path.module}/.terraform/silver_lambda.zip"
 }
 
-resource "aws_iam_role" "silver" {
-  name_prefix = "${var.bucket_prefix}-silver-"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "lambda.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "silver_logs" {
-  role       = aws_iam_role.silver.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy" "silver_s3" {
-  role = aws_iam_role.silver.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject"]
-        Resource = "${aws_s3_bucket.taotenshin_bronze.arn}/bronze/*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:AbortMultipartUpload"]
-        Resource = "${aws_s3_bucket.taotenshin_silver.arn}/silver/*"
-      }
-    ]
-  })
+data "aws_iam_role" "lambda_execution" {
+  name = "LabRole"
 }
 
 resource "aws_cloudwatch_log_group" "silver" {
@@ -47,7 +15,7 @@ resource "aws_cloudwatch_log_group" "silver" {
 
 resource "aws_lambda_function" "silver" {
   function_name    = "${var.bucket_prefix}-bronze-to-silver"
-  role             = aws_iam_role.silver.arn
+  role             = data.aws_iam_role.lambda_execution.arn
   runtime          = "python3.12"
   handler          = "silver.lambda_handler"
   filename         = data.archive_file.silver.output_path
@@ -61,17 +29,13 @@ resource "aws_lambda_function" "silver" {
 
   environment {
     variables = {
-      BRONZE_BUCKET           = aws_s3_bucket.taotenshin_bronze.bucket
-      SILVER_BUCKET           = aws_s3_bucket.taotenshin_silver.bucket
+      BRONZE_BUCKET           = local.bronze_bucket_name
+      SILVER_BUCKET           = local.silver_bucket_name
       BUCKET_OWNER_ACCOUNT_ID = data.aws_caller_identity.current.account_id
     }
   }
 
-  depends_on = [
-    aws_iam_role_policy.silver_s3,
-    aws_iam_role_policy_attachment.silver_logs,
-    aws_cloudwatch_log_group.silver,
-  ]
+  depends_on = [aws_cloudwatch_log_group.silver]
 }
 
 resource "aws_lambda_permission" "bronze" {
@@ -79,12 +43,12 @@ resource "aws_lambda_permission" "bronze" {
   action         = "lambda:InvokeFunction"
   function_name  = aws_lambda_function.silver.function_name
   principal      = "s3.amazonaws.com"
-  source_arn     = aws_s3_bucket.taotenshin_bronze.arn
+  source_arn     = "arn:aws:s3:::${local.bronze_bucket_name}"
   source_account = data.aws_caller_identity.current.account_id
 }
 
 resource "aws_s3_bucket_notification" "bronze" {
-  bucket = aws_s3_bucket.taotenshin_bronze.id
+  bucket = local.bronze_bucket_name
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.silver.arn
@@ -92,15 +56,53 @@ resource "aws_s3_bucket_notification" "bronze" {
     filter_prefix       = "bronze/"
   }
 
-  depends_on = [aws_lambda_permission.bronze]
+  depends_on = [
+    aws_lambda_permission.bronze,
+    aws_s3_bucket_public_access_block.taotenshin_bronze,
+    aws_s3_bucket_public_access_block.taotenshin_silver,
+  ]
 }
 
-resource "terraform_data" "capture_bronze" {
+resource "terraform_data" "capture_and_upload_bronze" {
   triggers_replace = [timestamp()]
 
   provisioner "local-exec" {
-    command = "\"${var.python_executable}\" \"${path.module}/scripts/bronze.py\" --bucket ${aws_s3_bucket.taotenshin_bronze.bucket} --region ${var.aws_region}"
+    interpreter = ["PowerShell", "-NoProfile", "-NonInteractive", "-Command"]
+    command     = "& \"${path.module}/.venv/Scripts/python.exe\" \"${path.module}/scripts/bronze.py\" --bucket \"${local.bronze_bucket_name}\" --region \"${var.aws_region}\""
   }
 
   depends_on = [aws_s3_bucket_notification.bronze]
+}
+
+resource "terraform_data" "prepare_buckets" {
+  triggers_replace = [timestamp()]
+
+  provisioner "local-exec" {
+    interpreter = ["PowerShell", "-NoProfile", "-NonInteractive", "-Command"]
+    command     = <<-EOT
+      $ErrorActionPreference = "Stop"
+      $project = "${path.module}"
+      $python = (Get-Command "${var.python_executable}" -ErrorAction Stop).Source
+      $venv = Join-Path $project ".venv"
+      $venvPython = Join-Path $venv "Scripts\python.exe"
+      $recreateVenv = -not (Test-Path -LiteralPath $venvPython)
+      if (-not $recreateVenv) {
+        & $venvPython -c "import boto3, pandas, requests"
+        $recreateVenv = $LASTEXITCODE -ne 0
+      }
+      if ($recreateVenv) {
+        Write-Output "Criando um ambiente virtual Python limpo e compativel."
+        & $python -m venv --clear $venv
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      }
+      if (-not (Test-Path -LiteralPath $venvPython)) {
+        & $python -m venv $venv
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      }
+      & $venvPython -m pip install --disable-pip-version-check -r (Join-Path $project "requirements.txt")
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      & $venvPython (Join-Path $project "scripts\bootstrap_buckets.py") --region "${var.aws_region}" --bronze-bucket "${local.bronze_bucket_name}" --silver-bucket "${local.silver_bucket_name}"
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    EOT
+  }
 }
