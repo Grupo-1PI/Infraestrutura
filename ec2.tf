@@ -50,6 +50,7 @@ resource "aws_instance" "backend_1" {
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
     backend_image         = var.backend_image
+    saas_image            = var.saas_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name
@@ -57,6 +58,10 @@ resource "aws_instance" "backend_1" {
     db_username           = var.db_username
     initialize_database   = true
     jwt_secret_b64        = base64encode(var.jwt_secret)
+    twilio_account_sid    = var.twilio_account_sid
+    twilio_auth_token     = var.twilio_auth_token
+    twilio_phone_number   = var.twilio_phone_number
+    twilio_content_sid    = var.twilio_content_sid
   })
 
   tags = {
@@ -80,6 +85,7 @@ resource "aws_instance" "backend_2" {
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
     backend_image         = var.backend_image
+    saas_image            = var.saas_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name
@@ -87,6 +93,10 @@ resource "aws_instance" "backend_2" {
     db_username           = var.db_username
     initialize_database   = false
     jwt_secret_b64        = base64encode(var.jwt_secret)
+    twilio_account_sid    = var.twilio_account_sid
+    twilio_auth_token     = var.twilio_auth_token
+    twilio_phone_number   = var.twilio_phone_number
+    twilio_content_sid    = var.twilio_content_sid
   })
 
   tags = {

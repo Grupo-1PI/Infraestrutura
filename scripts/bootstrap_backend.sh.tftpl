@@ -33,6 +33,7 @@ for attempt in $(seq 1 30); do
 done
 %{ endif ~}
 
+# --- Backend ---
 docker pull '${backend_image}'
 docker rm -f taotenshin-backend || true
 docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 \
@@ -48,3 +49,26 @@ docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 \
   -e JPA_DDL_AUTO=none \
   -e SQL_INIT_MODE=never \
   '${backend_image}'
+
+# --- SaaS Notificacao (RabbitMQ + Twilio) ---
+docker pull '${saas_image}'
+docker rm -f taotenshin-saas || true
+docker run -d --restart unless-stopped --name taotenshin-saas -p 8081:8081 \
+  -e SPRING_PROFILES_ACTIVE=docker \
+  -e SERVER_PORT=8081 \
+  -e SPRING_RABBITMQ_HOST=localhost \
+  -e SPRING_RABBITMQ_PORT=5672 \
+  -e SPRING_RABBITMQ_USERNAME=guest \
+  -e SPRING_RABBITMQ_PASSWORD=guest \
+  -e TWILIO_ACCOUNT_SID="${twilio_account_sid}" \
+  -e TWILIO_AUTH_TOKEN="${twilio_auth_token}" \
+  -e TWILIO_PHONE_NUMBER="${twilio_phone_number}" \
+  -e TWILIO_CONTENT_SID="${twilio_content_sid}" \
+  '${saas_image}'
+
+# --- RabbitMQ (mesma instancia) ---
+docker rm -f taotenshin-rabbitmq || true
+docker run -d --restart unless-stopped --name taotenshin-rabbitmq -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest \
+  -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:4-management
