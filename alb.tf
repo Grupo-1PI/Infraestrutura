@@ -54,26 +54,6 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# Target Group do SaaS (Notificações)
-resource "aws_lb_target_group" "saas" {
-  name        = "tg-taotenshin-saas"
-  port        = 8081
-  protocol    = "HTTP"
-  target_type = "instance"
-  vpc_id      = aws_vpc.vpc_taotenshin.id
-
-  health_check {
-    path                = "/notificacoes/actuator/health"
-    matcher             = "200"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-  }
-
-  tags = {
-    Name = "tg-taotenshin-saas"
-  }
-}
-
 # 3. Listener HTTP do ALB
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.taotenshin.arn
@@ -97,26 +77,11 @@ resource "aws_lb_listener_rule" "backend_api" {
 
   condition {
     path_pattern {
-        values = ["/api", "/api/*", "/usuarios/","/usuarios/*"]
+      values = ["/api", "/api/*", "/usuarios/", "/usuarios/*"]
     }
   }
 }
 
-resource "aws_lb_listener_rule" "saas_notificacoes" {
-  listener_arn = aws_lb_listener.http.arn
-  priority     = 20
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.saas.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/notificacoes", "/notificacoes/*"]
-    }
-  }
-}
 
 # 4. Registro dos dois frontends no Target Group
 resource "aws_lb_target_group_attachment" "frontend_1" {
@@ -141,16 +106,4 @@ resource "aws_lb_target_group_attachment" "backend_2" {
   target_group_arn = aws_lb_target_group.backend.arn
   target_id        = aws_instance.backend_2.id
   port             = 8080
-}
-
-resource "aws_lb_target_group_attachment" "saas_1" {
-  target_group_arn = aws_lb_target_group.saas.arn
-  target_id        = aws_instance.backend_1.id
-  port             = 8081
-}
-
-resource "aws_lb_target_group_attachment" "saas_2" {
-  target_group_arn = aws_lb_target_group.saas.arn
-  target_id        = aws_instance.backend_2.id
-  port             = 8081
 }

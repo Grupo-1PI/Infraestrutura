@@ -48,8 +48,8 @@ variable "key_name" {
   default     = "vockey"
 }
 
-variable "saas_image" {
-  description = "Imagem completa do servico de notificacoes (SaaS) publicada no Docker Hub."
+variable "filamq_image" {
+  description = "Imagem completa do servico filaMQ (notificacoes RabbitMQ + Twilio) publicada no Docker Hub."
   type        = string
 }
 
