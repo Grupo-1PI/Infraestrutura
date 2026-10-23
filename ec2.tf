@@ -2,7 +2,7 @@
 # provisiona a AWS; nao copia source, dist ou JAR para as EC2.
 resource "aws_instance" "frontend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.publica_1.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
@@ -22,7 +22,7 @@ resource "aws_instance" "frontend_1" {
 
 resource "aws_instance" "frontend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.publica_2.id
   vpc_security_group_ids      = [aws_security_group.frontend.id]
@@ -42,7 +42,7 @@ resource "aws_instance" "frontend_2" {
 
 resource "aws_instance" "backend_1" {
   ami                         = "ami-0b6d9d3d33ba97d99"
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.backend_1.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
@@ -50,6 +50,7 @@ resource "aws_instance" "backend_1" {
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
     backend_image         = var.backend_image
+    filamq_image          = var.filamq_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name
@@ -57,6 +58,10 @@ resource "aws_instance" "backend_1" {
     db_username           = var.db_username
     initialize_database   = true
     jwt_secret_b64        = base64encode(var.jwt_secret)
+    twilio_account_sid    = var.twilio_account_sid
+    twilio_auth_token     = var.twilio_auth_token
+    twilio_phone_number   = var.twilio_phone_number
+    twilio_content_sid    = var.twilio_content_sid
   })
 
   tags = {
@@ -67,12 +72,13 @@ resource "aws_instance" "backend_1" {
   depends_on = [
     aws_db_instance.taotenshin,
     aws_route_table_association.backend_1,
+    aws_lb.taotenshin,
   ]
 }
 
 resource "aws_instance" "backend_2" {
   ami                         = "ami-0b6d9d3d33ba97d99"
-  instance_type               = "t3.micro"
+  instance_type               = "t3.small"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.backend_2.id
   vpc_security_group_ids      = [aws_security_group.backend.id]
@@ -80,6 +86,7 @@ resource "aws_instance" "backend_2" {
 
   user_data = templatefile("${path.module}/scripts/bootstrap_backend.sh.tftpl", {
     backend_image         = var.backend_image
+    filamq_image          = var.filamq_image
     database_init_sql_url = var.database_init_sql_url
     db_host               = aws_db_instance.taotenshin.address
     db_name               = var.db_name
@@ -87,6 +94,10 @@ resource "aws_instance" "backend_2" {
     db_username           = var.db_username
     initialize_database   = false
     jwt_secret_b64        = base64encode(var.jwt_secret)
+    twilio_account_sid    = var.twilio_account_sid
+    twilio_auth_token     = var.twilio_auth_token
+    twilio_phone_number   = var.twilio_phone_number
+    twilio_content_sid    = var.twilio_content_sid
   })
 
   tags = {
@@ -97,5 +108,6 @@ resource "aws_instance" "backend_2" {
   depends_on = [
     aws_db_instance.taotenshin,
     aws_route_table_association.backend_2,
+    aws_lb.taotenshin,
   ]
 }

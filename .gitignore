@@ -4,3 +4,5 @@
 # terraform.tfvars
 *.tfvars.json
 crash.log
+vockey.pem
+.terraform.lock.hcl

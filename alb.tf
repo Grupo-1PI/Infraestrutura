@@ -77,10 +77,11 @@ resource "aws_lb_listener_rule" "backend_api" {
 
   condition {
     path_pattern {
-        values = ["/api", "/api/*", "/usuarios/","/usuarios/*"]
+      values = ["/api", "/api/*", "/usuarios/", "/usuarios/*"]
     }
   }
 }
+
 
 # 4. Registro dos dois frontends no Target Group
 resource "aws_lb_target_group_attachment" "frontend_1" {

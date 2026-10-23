@@ -47,3 +47,32 @@ variable "key_name" {
   type        = string
   default     = "vockey"
 }
+
+variable "filamq_image" {
+  description = "Imagem completa do servico filaMQ (notificacoes RabbitMQ + Twilio) publicada no Docker Hub."
+  type        = string
+}
+
+variable "twilio_account_sid" {
+  description = "Account SID da Twilio."
+  type        = string
+  sensitive   = true
+}
+
+variable "twilio_auth_token" {
+  description = "Auth Token da Twilio."
+  type        = string
+  sensitive   = true
+}
+
+variable "twilio_phone_number" {
+  description = "Numero da Twilio (formato E.164, ex: +17372508034)."
+  type        = string
+  sensitive   = true
+}
+
+variable "twilio_content_sid" {
+  description = "Content SID do template WhatsApp aprovado na Twilio."
+  type        = string
+  sensitive   = true
+}
