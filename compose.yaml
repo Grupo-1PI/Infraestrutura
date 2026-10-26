@@ -1,0 +1,103 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: taotenshin-db-local
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-taotenshin}
+      MYSQL_USER: ${DB_USERNAME:-taotenshin}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no .env}
+      LANG: C.UTF-8
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: taotenshin-rabbitmq-local
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      LANG: C.UTF-8
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  filamq:
+    image: ${FILAMQ_IMAGE:-allyawada/tao-tenshin_rabbitmq:latest}
+    container_name: taotenshin-filamq-local
+    restart: unless-stopped
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    environment:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8081
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER:-}
+      TWILIO_CONTENT_SID: ${TWILIO_CONTENT_SID:-}
+    ports:
+      - "8081:8081"
+
+  backend:
+    image: ${BACKEND_IMAGE:-allyawada/tao-tenshin_back-end:latest}
+    container_name: taotenshin-backend-local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      filamq:
+        condition: service_started
+    environment:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8
+      SERVER_PORT: 8080
+      SERVER_SERVLET_CONTEXT_PATH: /api
+      NOTIFICACAO_SAAS_URL: http://filamq:8081
+      DB_URL: jdbc:mysql://db:3306/${DB_NAME:-taotenshin}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
+      DB_USERNAME: ${DB_USERNAME:-taotenshin}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no .env}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME:-taotenshin}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-taotenshin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no .env}
+      JPA_DDL_AUTO: none
+      SQL_INIT_MODE: never
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-allyawada/tao-tenshin_front-end:latest}
+    container_name: taotenshin-frontend-local
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  mysql_data:

@@ -3,6 +3,8 @@
 *.tfstate.*
 # terraform.tfvars
 *.tfvars.json
+.env
+init/*.sql
 crash.log
 vockey.pem
 .terraform.lock.hcl
