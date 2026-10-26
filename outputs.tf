@@ -17,3 +17,8 @@ output "backend_ecr_repository_url" {
   description = "URL do repositorio ECR do backend."
   value       = aws_ecr_repository.backend.repository_url
 }
+
+output "filamq_ecr_repository_url" {
+  description = "URL do repositorio ECR do filaMQ."
+  value       = aws_ecr_repository.filamq.repository_url
+}

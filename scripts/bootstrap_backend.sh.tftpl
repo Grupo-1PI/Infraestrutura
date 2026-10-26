@@ -12,6 +12,9 @@ apt-get install -y awscli docker-ce docker-ce-cli containerd.io docker-buildx-pl
 
 aws ecr get-login-password --region '${aws_region}' | docker login --username AWS --password-stdin '${ecr_registry}'
 
+# Create user-defined network for container DNS resolution
+docker network create taotenshin-network || true
+
 DB_PASSWORD="$(printf '%s' '${db_password_b64}' | base64 --decode)"
 JWT_SECRET="$(printf '%s' '${jwt_secret_b64}' | base64 --decode)"
 
@@ -35,11 +38,54 @@ for attempt in $(seq 1 30); do
 done
 %{ endif ~}
 
+# --- RabbitMQ (mesma instancia) ---
+docker rm -f taotenshin-rabbitmq || true
+docker run -d --restart unless-stopped --name taotenshin-rabbitmq \
+  --network taotenshin-network \
+  -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest \
+  -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:4-management
+
+# Aguardar RabbitMQ ficar pronto
+for attempt in $(seq 1 30); do
+  if docker exec taotenshin-rabbitmq rabbitmq-diagnostics -q ping 2>/dev/null; then
+    break
+  fi
+  if [ "$attempt" -eq 30 ]; then
+    echo "RabbitMQ nao ficou disponivel a tempo." >&2
+    exit 1
+  fi
+  sleep 3
+done
+
+# --- filaMQ (Notificacoes RabbitMQ + Twilio) ---
+docker pull '${filamq_image}'
+docker rm -f taotenshin-filamq || true
+docker run -d --restart unless-stopped --name taotenshin-filamq \
+  --network taotenshin-network \
+  -p 8081:8081 \
+  -e SPRING_PROFILES_ACTIVE=docker \
+  -e SERVER_PORT=8081 \
+  -e SPRING_RABBITMQ_HOST=taotenshin-rabbitmq \
+  -e SPRING_RABBITMQ_PORT=5672 \
+  -e SPRING_RABBITMQ_USERNAME=guest \
+  -e SPRING_RABBITMQ_PASSWORD=guest \
+  -e TWILIO_ACCOUNT_SID="${twilio_account_sid}" \
+  -e TWILIO_AUTH_TOKEN="${twilio_auth_token}" \
+  -e TWILIO_PHONE_NUMBER="${twilio_phone_number}" \
+  -e TWILIO_CONTENT_SID="${twilio_content_sid}" \
+  '${filamq_image}'
+
+# --- Backend ---
 docker pull '${backend_image}'
 docker rm -f taotenshin-backend || true
-docker run -d --restart unless-stopped --name taotenshin-backend -p 8080:8080 \
+docker run -d --restart unless-stopped --name taotenshin-backend \
+  --network taotenshin-network \
+  -p 8080:8080 \
   -e SERVER_PORT=8080 \
   -e SERVER_SERVLET_CONTEXT_PATH=/api \
+  -e NOTIFICACAO_SAAS_URL="http://taotenshin-filamq:8081" \
   -e DB_URL='jdbc:mysql://${db_host}:3306/${db_name}' \
   -e DB_USERNAME='${db_username}' \
   -e DB_PASSWORD="$DB_PASSWORD" \

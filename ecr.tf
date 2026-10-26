@@ -19,10 +19,20 @@ resource "aws_ecr_repository" "backend" {
   }
 }
 
+resource "aws_ecr_repository" "filamq" {
+  name                 = var.filamq_repository_name
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 locals {
   ecr_registry   = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com"
   frontend_image = "${aws_ecr_repository.frontend.repository_url}:${var.image_tag}"
   backend_image  = "${aws_ecr_repository.backend.repository_url}:${var.image_tag}"
+  filamq_image   = "${aws_ecr_repository.filamq.repository_url}:${var.image_tag}"
 }
 
 resource "aws_iam_role" "ec2_ecr_pull" {
@@ -57,7 +67,8 @@ resource "aws_iam_role_policy" "ec2_ecr_pull" {
       ]
       Resource = [
         aws_ecr_repository.frontend.arn,
-        aws_ecr_repository.backend.arn
+        aws_ecr_repository.backend.arn,
+        aws_ecr_repository.filamq.arn,
       ]
       }, {
       Effect   = "Allow"

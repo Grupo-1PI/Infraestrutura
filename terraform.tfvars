@@ -3,6 +3,7 @@
 
 frontend_repository_name = "tao-tenshin-frontend"
 backend_repository_name  = "tao-tenshin-backend"
+filamq_repository_name   = "tao-tenshin-filamq"
 image_tag                = "latest"
 database_init_sql_url = "https://raw.githubusercontent.com/Grupo-1PI/Banco-de-dados/refs/heads/production/script_completo.sql"
 
@@ -10,6 +11,11 @@ db_name     = "taotenshin"
 db_username = "taotenshin"
 db_password = "TaoTenshin2026SenhaForte123"
 jwt_secret  = "TaoTenshinJWT2026SenhaSeguraComMaisDe32Chars"
+
+twilio_account_sid  = ""
+twilio_auth_token   = ""
+twilio_phone_number = ""
+twilio_content_sid  = ""
 
 # Descubra em https://checkip.amazonaws.com e acrescente /32.
 ssh_allowed_cidr = "203.0.113.10/32"
