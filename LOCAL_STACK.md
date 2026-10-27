@@ -34,7 +34,7 @@ O Compose sobe os mesmos containers publicados no Docker Hub usados pelo Terrafo
 
 ## Uso
 
-Abra `http://localhost`. O frontend deve chamar `/api` no mesmo host, como acontece atrás do ALB. Se a imagem tiver uma URL de API fixa para produção, será necessário reconstruí-la com URL local ou ajustar sua configuração de build.
+Abra `http://localhost:8088`. O proxy local imita o roteamento do ALB: `/api/` vai ao backend e os outros caminhos vão ao frontend. A porta 80 fica disponível para outros serviços locais.
 
 Veja logs com `docker compose logs -f backend frontend db`. Para parar mantendo os dados, execute `docker compose down`. Para apagar também o banco local e recomeçar do zero, execute `docker compose down -v`.
 
